@@ -22,13 +22,32 @@ Data comes from two official sources: INA (Instituto Nacional del Agua) and SMN 
 
 Requirements: Python 3.11+
 
+**Linux / Mac:**
 ```bash
 git clone https://github.com/chipap-dev/mareas.git
 cd mareas
-
 python -m venv venv
-source venv/bin/activate        # Windows: venv\Scripts\activate
+source venv/bin/activate
+pip install -r requirements_mareas.txt
+python manage_mareas.py runserver
+```
 
+**Windows (Git Bash):**
+```bash
+git clone https://github.com/chipap-dev/mareas.git
+cd mareas
+python -m venv venv
+source venv/Scripts/activate
+pip install -r requirements_mareas.txt
+python manage_mareas.py runserver
+```
+
+**Windows (CMD / PowerShell):**
+```bat
+git clone https://github.com/chipap-dev/mareas.git
+cd mareas
+python -m venv venv
+venv\Scripts\activate
 pip install -r requirements_mareas.txt
 python manage_mareas.py runserver
 ```
@@ -42,6 +61,7 @@ The app loads with cached data already included in the repo. No API calls needed
 ## Refresh data (optional)
 
 ```bash
+cd mareas
 python manage_mareas.py mareas_actualizar_datos
 ```
 
