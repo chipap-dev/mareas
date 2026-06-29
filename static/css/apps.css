@@ -1,0 +1,179 @@
+.catalog-scene {
+  position: relative;
+}
+
+.app-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-height: 100%;
+  overflow: hidden;
+  color: var(--text);
+  border-radius: 24px;
+}
+
+.app-media {
+  position: relative;
+  height: 138px;
+  margin: -6px 0 8px;
+  border: 2px solid rgba(22, 22, 22, 0.12);
+  border-radius: 18px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.app-media-brand {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.app-media-logo {
+  position: absolute;
+  left: 16px;
+  bottom: 14px;
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 6px rgba(22, 22, 22, 0.16));
+}
+
+.app-media-brand-laser {
+  width: 100%;
+  height: 100%;
+  background:
+    linear-gradient(135deg, rgba(255, 127, 114, 0.2), rgba(255, 230, 166, 0.35)),
+    repeating-linear-gradient(90deg, rgba(22, 22, 22, 0.04) 0 14px, transparent 14px 28px);
+}
+
+.app-media-logo-laser {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 88px;
+  padding: 10px 14px;
+  border: 2px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  font-family: "Fraunces", serif;
+  font-weight: 700;
+}
+
+.app-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: 100%;
+  height: 6px;
+  background: currentColor;
+  opacity: 0.8;
+}
+
+.app-card h2 {
+  margin: 8px 0 0;
+}
+
+.app-card p,
+.app-proof strong {
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.app-card-head {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.app-description {
+  flex-grow: 1;
+}
+
+.app-copy-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.app-proof {
+  padding: 14px 16px;
+  border: 1px solid rgba(36, 49, 58, 0.10);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.app-proof strong {
+  display: block;
+  margin-top: 10px;
+  color: var(--text);
+}
+
+.app-card-mareas {
+  color: var(--accent-water);
+  border-color: rgba(100, 182, 255, 0.5);
+  background:
+    linear-gradient(180deg, rgba(75, 163, 255, 0.16), transparent 28%),
+    linear-gradient(180deg, #ffffff 0%, #eef7ff 100%);
+}
+
+.app-card-luthier {
+  color: var(--accent-wood);
+  border-color: rgba(241, 166, 97, 0.55);
+  background:
+    linear-gradient(180deg, rgba(240, 171, 89, 0.16), transparent 28%),
+    linear-gradient(180deg, #ffffff 0%, #fff4e6 100%);
+}
+
+.app-card-laser {
+  color: var(--accent-laser);
+  border-color: rgba(251, 95, 111, 0.5);
+  background:
+    linear-gradient(180deg, rgba(255, 127, 114, 0.16), transparent 28%),
+    linear-gradient(180deg, #ffffff 0%, #fff1ef 100%);
+}
+
+.badge-tag {
+  width: fit-content;
+  padding: 6px 10px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.app-card .chipap-btn {
+  margin-top: auto;
+}
+
+.app-card .mini-label {
+  color: currentColor;
+}
+
+.app-tech-line {
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.65;
+}
+
+.app-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.app-tags span {
+  display: inline-flex;
+  padding: 7px 10px;
+  border: 1px solid rgba(36, 49, 58, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--text);
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}

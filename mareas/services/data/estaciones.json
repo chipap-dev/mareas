@@ -1,0 +1,26 @@
+[
+  {
+    "id": "san_fernando",
+    "nombre": "San Fernando",
+    "series_id": "26202",
+    "site_code": "52",
+    "cal_id": "432",
+    "pronostico_id": "SAN_FERNANDO"
+  },
+  {
+    "id": "rosario",
+    "nombre": "Rosario",
+    "series_id": "29542",
+    "site_code": "5893",
+    "cal_id": "489",
+    "pronostico_id": "ROSARIO_AERO"
+  },
+  {
+    "id": "zarate",
+    "nombre": "Zárate",
+    "series_id": "29534",
+    "site_code": "5907",
+    "cal_id": "489",
+    "pronostico_id": "SAN_FERNANDO"
+  }
+]

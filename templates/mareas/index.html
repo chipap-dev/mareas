@@ -1,0 +1,439 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Chipap | Mareas{% endblock %}
+{% block favicon %}<link rel="icon" type="image/png" href="{% static 'img/logos/mareas.png' %}" />{% endblock %}
+{% block pwa %}
+<link rel="manifest" href="{% static 'pwa/manifest-mareas.json' %}" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="Mareas" />
+<link rel="apple-touch-icon" href="{% static 'img/logos/mareas.png' %}" />
+{% endblock %}
+{% block body_class %}is-app-page{% endblock %}
+{% block og_tags %}
+<meta property="og:type" content="website" />
+<meta property="og:url" content="{{ request.build_absolute_uri }}" />
+<meta property="og:title" content="Mareas — Alturas y clima | Chipap" />
+<meta property="og:description" content="Consultá alturas de marea, clima y próximos días sin revisar varias fuentes por separado." />
+<meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'img/logos/mareas.png' %}" />
+<meta property="og:image:alt" content="Mareas" />
+{% endblock %}
+{% block extra_head %}
+<meta name="theme-color" content="#235f9e" />
+{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/mareas.css' %}?v=20260615k" />
+{% endblock %}
+
+{% block content %}
+<div class="mareas-page" id="mareas-app">
+  <div class="mareas-container">
+    <div class="mareas-pad">
+
+      <!-- breadcrumb -->
+      <div class="mareas-breadcrumb">
+        <div class="mareas-bc-path">
+          <span class="mareas-bc-eyebrow">// SISTEMAS</span> / mareas
+        </div>
+        <a href="/#sistemas" class="mareas-bc-back">← volver a sistemas</a>
+      </div>
+
+      <!-- DASHBOARD PANEL -->
+      <div class="mareas-dash">
+
+        <!-- header -->
+        <div class="mareas-dashhead">
+          <div class="mareas-dashhead-brand">
+            <div class="mareas-dashhead-icon" aria-hidden="true">
+              <svg viewBox="0 0 12 8" width="28" height="28" style="shape-rendering:crispEdges;display:block">
+                <rect x="1" y="0" width="2" height="1" fill="rgba(255,255,255,.9)"/>
+                <rect x="4" y="0" width="2" height="1" fill="rgba(255,255,255,.9)"/>
+                <rect x="0" y="1" width="1" height="1" fill="rgba(255,255,255,.9)"/>
+                <rect x="3" y="1" width="1" height="1" fill="rgba(255,255,255,.9)"/>
+                <rect x="6" y="1" width="1" height="1" fill="rgba(255,255,255,.9)"/>
+                <rect x="4" y="2" width="1" height="1" fill="rgba(255,255,255,.9)"/>
+                <rect x="1" y="4" width="2" height="1" fill="rgba(255,255,255,.9)"/>
+                <rect x="4" y="4" width="2" height="1" fill="rgba(255,255,255,.9)"/>
+                <rect x="0" y="5" width="1" height="1" fill="rgba(255,255,255,.9)"/>
+                <rect x="3" y="5" width="1" height="1" fill="rgba(255,255,255,.9)"/>
+                <rect x="6" y="5" width="1" height="1" fill="rgba(255,255,255,.9)"/>
+                <rect x="4" y="6" width="1" height="1" fill="rgba(255,255,255,.9)"/>
+              </svg>
+            </div>
+            <div class="mareas-dashhead-text">
+              <h1 class="mareas-dash-title">{{ title }}</h1>
+              <div class="mareas-dash-subtitle">marea, clima y próximos días · datos del INA + SMN</div>
+            </div>
+          </div>
+          <div class="mareas-status-badge">
+            <span class="mareas-status-dot" aria-hidden="true"></span>
+            SIEMPRE ACTUALIZADO
+          </div>
+        </div>
+
+        <!-- controls -->
+        <div class="mareas-controls">
+          <div class="mareas-station-ctrl">
+            <div class="mareas-ctrl-label">ESTACIÓN</div>
+            <select id="mareas-station-select" class="mareas-station-select" aria-label="Seleccionar estacion">
+              {% for station in stations %}
+              <option value="{{ station.key }}"{% if station.key == default_station %} selected{% endif %}>{{ station.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mareas-days-ctrl">
+            <div class="mareas-ctrl-label">DÍAS</div>
+            <div class="mareas-dias" role="tablist" aria-label="Seleccion de dia">
+              {% for day in days %}
+              <button
+                class="mareas-day-chip{% if day.slug == active_day.slug %} is-active{% endif %}"
+                type="button"
+                data-day="{{ day.slug }}"
+                aria-pressed="{% if day.slug == active_day.slug %}true{% else %}false{% endif %}"
+              >
+                <span>{{ day.label }}</span>
+                <small>{{ day.date_label }}</small>
+              </button>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+
+        <!-- main grid: stats | chart -->
+        <div class="mareas-maingrid">
+
+          <!-- stats panel -->
+          <div class="mareas-stats-panel">
+            <div class="mareas-panel-kicker">ALTURA ACTUAL</div>
+            <div class="mareas-height-row">
+              <strong class="mareas-height-value" id="mareas-height">{{ active_day.height_now }}</strong>
+            </div>
+            <p class="mareas-height-change" id="mareas-change">{{ active_day.height_change }}</p>
+
+            <div class="mareas-tide-events">
+              <div class="mareas-event-card">
+                <strong id="mareas-next-high">
+                  <span class="mareas-event-name">Pleamar</span>
+                  <span class="mareas-event-value">{{ active_day.next_high }} · {{ active_day.next_high_marker.height|floatformat:2 }} m</span>
+                </strong>
+              </div>
+              <div class="mareas-event-card">
+                <strong id="mareas-next-low">
+                  <span class="mareas-event-name">Bajamar</span>
+                  <span class="mareas-event-value">{{ active_day.next_low }} · {{ active_day.next_low_marker.height|floatformat:2 }} m</span>
+                </strong>
+              </div>
+            </div>
+
+            <div class="mareas-climate-strip">
+              <div class="mareas-weather-item">
+                <span>Temperatura</span>
+                <strong id="mareas-temp">{{ active_day.temperature }}</strong>
+              </div>
+              <div class="mareas-weather-item">
+                <span>Viento</span>
+                <strong id="mareas-wind">{{ active_day.wind }}</strong>
+              </div>
+              <div class="mareas-weather-item">
+                <span>Lluvia</span>
+                <strong id="mareas-rain">{{ active_day.rain }}</strong>
+              </div>
+              <div class="mareas-weather-item" id="mareas-sky-item"{% if not active_day.has_sky %} hidden{% endif %}>
+                <span>Cielo</span>
+                <strong id="mareas-sky">{{ active_day.sky }}</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- chart panel -->
+          <div class="mareas-chart-panel">
+            <div class="mareas-chart-head">
+              <div>
+                <div class="mareas-panel-kicker">EVOLUCIÓN DEL DÍA</div>
+                <strong class="mareas-chart-heading">Altura de marea</strong>
+              </div>
+              <small class="mareas-chart-state" id="mareas-state">{{ active_day.state }}</small>
+            </div>
+            <div class="mareas-chart-body">
+              <div class="mareas-chart-y-axis-fixed" id="mareas-chart-y-axis-fixed" aria-hidden="true"></div>
+              <div class="mareas-chart-scroll">
+                <svg
+                  class="mareas-chart"
+                  id="mareas-chart"
+                  viewBox="0 0 760 300"
+                  width="100%"
+                  height="300"
+                  role="img"
+                  aria-labelledby="mareas-chart-acc-title"
+                >
+                  <title id="mareas-chart-acc-title">Evolución diaria de la altura de marea</title>
+                  <g class="mareas-chart-grid"></g>
+                  <g class="mareas-chart-y-labels" id="mareas-chart-y-labels"></g>
+                  <path class="mareas-chart-area" id="mareas-chart-area"></path>
+                  <path class="mareas-chart-line mareas-chart-line-secondary" id="mareas-chart-line-min"></path>
+                  <path class="mareas-chart-line mareas-chart-line-secondary" id="mareas-chart-line-max"></path>
+                  <path class="mareas-chart-line" id="mareas-chart-line"></path>
+                  <g id="mareas-chart-reference"></g>
+                  <g id="mareas-chart-points"></g>
+                  <g id="mareas-chart-overlays"></g>
+                  <g id="mareas-chart-markers"></g>
+                  <g class="mareas-chart-labels" id="mareas-chart-labels"></g>
+                </svg>
+              </div>
+            </div>
+            <div class="mareas-chart-legend">
+              <span><i class="is-average"></i><span class="legend-label-full">Promedio</span><span class="legend-label-short">Prom</span></span>
+              <span><i class="is-min"></i><span class="legend-label-full">Mínima</span><span class="legend-label-short">Min</span></span>
+              <span><i class="is-max"></i><span class="legend-label-full">Máxima</span><span class="legend-label-short">Max</span></span>
+              <button class="mareas-chart-center-button" id="mareas-chart-center-button" type="button">
+                <i class="is-current"></i><span class="legend-label-full">Hora actual</span><span class="legend-label-short">Ahora</span>
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- TABLE CARD -->
+      <div class="mareas-tablecard">
+        <div class="mareas-tablecard-header">
+          <div>
+            <div class="mareas-label-mono">TABLA</div>
+            <h2 class="mareas-tablecard-title">Valores por hora</h2>
+          </div>
+          <div class="mareas-tablecard-hint">promedio, mínimo y máximo</div>
+        </div>
+
+        <div class="mareas-table-wrap">
+          <table class="mareas-table" id="mareas-table">
+            <thead>
+              <tr>
+                <th class="col-key">Hora</th>
+                <th class="col-key">Prom</th>
+                <th>↓ Mín</th>
+                <th>↑ Máx</th>
+              </tr>
+            </thead>
+            <tbody id="mareas-table-body">
+              {% for row in active_day.table_rows %}
+              <tr>
+                <td class="col-key">{{ row.time }}</td>
+                <td class="col-key">{{ row.avg }}</td>
+                <td>{{ row.min }}</td>
+                <td>{{ row.max }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="mareas-tablecard-foot">
+          <div class="mareas-status-pill">
+            <span class="mareas-status-dot" aria-hidden="true"></span>
+            <span>última actualización · <strong id="mareas-updated">{{ active_day.updated_at }}</strong></span>
+          </div>
+          <a class="mareas-primary-action" href="#mareas-tecnico">Ver detalle técnico →</a>
+        </div>
+      </div>
+
+      <!-- DETALLE TÉCNICO -->
+      <section class="mareas-secondary" id="mareas-tecnico">
+
+        <div class="mareas-tech-header">
+          <span class="mareas-tech-eyebrow">// DETALLE TÉCNICO</span>
+          <h2 class="mareas-tech-title">Arquitectura e implementación</h2>
+          <p class="mareas-tech-intro">Fuentes de datos, procesamiento y tecnologías aplicadas. Para equipos técnicos, clientes y reclutadores.</p>
+        </div>
+
+        <!-- pipeline -->
+        <div class="mareas-pipeline-wrap">
+          <div class="mareas-pipeline">
+            <div class="mareas-pipeline-node">
+              <div class="mareas-pipeline-badge">api</div>
+              <strong>INA + SMN</strong>
+              <span>2 fuentes oficiales</span>
+            </div>
+            <span class="mareas-pipeline-arrow" aria-hidden="true">→</span>
+            <div class="mareas-pipeline-node">
+              <div class="mareas-pipeline-badge">fetch</div>
+              <strong>Descarga</strong>
+              <span>JSON + ZIP/TXT</span>
+            </div>
+            <span class="mareas-pipeline-arrow" aria-hidden="true">→</span>
+            <div class="mareas-pipeline-node">
+              <div class="mareas-pipeline-badge">json</div>
+              <strong>Cache local</strong>
+              <span>por estación</span>
+            </div>
+            <span class="mareas-pipeline-arrow" aria-hidden="true">→</span>
+            <div class="mareas-pipeline-node">
+              <div class="mareas-pipeline-badge">svc</div>
+              <strong>Transform</strong>
+              <span>services/</span>
+            </div>
+            <span class="mareas-pipeline-arrow" aria-hidden="true">→</span>
+            <div class="mareas-pipeline-node mareas-pipeline-node-out">
+              <div class="mareas-pipeline-badge is-out">ui</div>
+              <strong>Template</strong>
+              <span>HTML + SVG + JS</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- fuentes -->
+        <div class="mareas-fuentes">
+
+          <div class="mareas-detail-card mareas-detail-ina">
+            <div class="mareas-detail-card-head">
+              <span class="mareas-detail-card-label">FUENTE DE MAREAS</span>
+            </div>
+            <h3>INA</h3>
+            <p class="mareas-detail-org">Instituto Nacional del Agua — REST JSON</p>
+            <a class="mareas-detail-url mareas-detail-url-link" href="https://alerta.ina.gob.ar/pub/gui/datosProno&calId=432&seriesId=26202&timeStart=now-1days&timeEnd=now+4days&auto=true" target="_blank" rel="noopener">alerta.ina.gob.ar/pub/gui/datosProno<br>&amp;calId=432&amp;seriesId=26202<br>&amp;timeStart=now-1days&amp;timeEnd=now+4days</a>
+            <p class="mareas-detail-sublabel mareas-sublabel-ina">LA API ENTREGA</p>
+            <ul class="mareas-detail-list mareas-list-ina">
+              <li>5 valores de altura posibles por hora</li>
+              <li>4 días, 3 estaciones: San Fernando, Rosario, Zárate</li>
+            </ul>
+            <p class="mareas-detail-sublabel mareas-sublabel-ina">LA APP CALCULA</p>
+            <ul class="mareas-detail-list mareas-list-ina">
+              <li>Mín, promedio y máx agrupando los 5 valores por hora</li>
+              <li>Altura actual por interpolación lineal entre registros</li>
+              <li>Próximo máximo y mínimo detectando cambio de pendiente</li>
+            </ul>
+          </div>
+
+          <div class="mareas-detail-card mareas-detail-smn">
+            <div class="mareas-detail-card-head">
+              <span class="mareas-detail-card-label">FUENTE DE CLIMA</span>
+            </div>
+            <h3>SMN</h3>
+            <p class="mareas-detail-org">Servicio Meteorológico Nacional — ZIP descarga</p>
+            <div class="mareas-detail-url">GET ssl.smn.gob.ar/dpd/zipopendata.php<br>?dato=pron5d</div>
+            <p class="mareas-detail-sublabel mareas-sublabel-smn">LA API ENTREGA</p>
+            <ul class="mareas-detail-list mareas-list-smn">
+              <li>ZIP con un TXT de pronóstico por localidad</li>
+              <li>Temperatura, grados de viento, velocidad y precipitación</li>
+              <li>Fechas DD/MMM/AAAA, horas como "06Hs."</li>
+            </ul>
+            <p class="mareas-detail-sublabel mareas-sublabel-smn">LA APP HACE</p>
+            <ul class="mareas-detail-list mareas-list-smn">
+              <li>Descomprime el ZIP y detecta el encoding del TXT</li>
+              <li>Extrae el bloque de cada estación con regex</li>
+              <li>Convierte fecha a ISO y grados de viento a abreviatura</li>
+              <li>Mergea los campos meteorológicos con los datos de marea</li>
+            </ul>
+          </div>
+
+          <div class="mareas-detail-card mareas-detail-arch">
+            <div class="mareas-detail-card-head">
+              <span class="mareas-detail-card-label">ARQUITECTURA</span>
+            </div>
+            <h3>Sin base de datos</h3>
+            <p class="mareas-detail-org">File-based cache — sin ORM ni migraciones</p>
+            <div class="mareas-arch-items">
+              <div class="mareas-arch-item">
+                <strong>Service layer</strong>
+                <span>mareas/services/ — lectura, transformación y normalización separadas.</span>
+              </div>
+              <div class="mareas-arch-item">
+                <strong>Fallback controlado</strong>
+                <span>Si una fuente falla, el sistema conserva el último cache válido.</span>
+              </div>
+              <div class="mareas-arch-item">
+                <strong>Datos ausentes</strong>
+                <span>Si INA o SMN devuelven un campo vacío, la interfaz lo oculta en lugar de mostrar un valor roto o en blanco.</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- stack + CLI -->
+        <div class="mareas-stackgrid">
+
+          <div class="mareas-techstack-card">
+            <div class="mareas-label-mono">STACK TÉCNICO</div>
+            <h3 class="mareas-techstack-title">Tecnologías aplicadas</h3>
+            <div class="mareas-techstack">
+              <div class="mareas-techstack-item">
+                <div class="mareas-techstack-head">
+                  <span class="mareas-techstack-dot is-orange" aria-hidden="true"></span>
+                  <strong>Python + Django</strong>
+                </div>
+                <p>Views, templates, service layer y management commands.</p>
+              </div>
+              <div class="mareas-techstack-item">
+                <div class="mareas-techstack-head">
+                  <span class="mareas-techstack-dot is-blue" aria-hidden="true"></span>
+                  <strong>REST API — INA</strong>
+                </div>
+                <p>Fetch con requests, parámetros dinámicos por estación.</p>
+              </div>
+              <div class="mareas-techstack-item">
+                <div class="mareas-techstack-head">
+                  <span class="mareas-techstack-dot is-green" aria-hidden="true"></span>
+                  <strong>ZIP API — SMN</strong>
+                </div>
+                <p>Descarga, descompresión y parseo de TXT en Python.</p>
+              </div>
+              <div class="mareas-techstack-item">
+                <div class="mareas-techstack-head">
+                  <span class="mareas-techstack-dot is-blue" aria-hidden="true"></span>
+                  <strong>JSON Cache local</strong>
+                </div>
+                <p>Persistencia por archivo, sin servidor ni base de datos.</p>
+              </div>
+              <div class="mareas-techstack-item">
+                <div class="mareas-techstack-head">
+                  <span class="mareas-techstack-dot is-orange" aria-hidden="true"></span>
+                  <strong>SVG + JS vanilla</strong>
+                </div>
+                <p>El gráfico se construye con código: paths, coordenadas y escalado calculados en JS, sin librería de visualización.</p>
+              </div>
+              <div class="mareas-techstack-item">
+                <div class="mareas-techstack-head">
+                  <span class="mareas-techstack-dot is-green" aria-hidden="true"></span>
+                  <strong>CSS custom properties</strong>
+                </div>
+                <p>Temas día / noche / amanecer / atardecer en tiempo real.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="mareas-cli-card">
+            <div class="mareas-cli-eyebrow">HERRAMIENTAS CLI</div>
+            <h3 class="mareas-cli-title">Management commands</h3>
+            <p class="mareas-cli-intro">Actualización y validación sin depender de la interfaz web.</p>
+            <div class="mareas-cmd-list">
+              <div class="mareas-cmd-item">
+                <code>mareas_actualizar_datos</code>
+                <span>Obtiene datos frescos de INA y SMN, actualiza el cache.</span>
+              </div>
+              <div class="mareas-cmd-item">
+                <code>mareas_validar_fuente</code>
+                <span>Valida integridad del catálogo y los archivos de cache.</span>
+              </div>
+              <div class="mareas-cmd-item">
+                <code>mareas_listar_estaciones</code>
+                <span>Lista estaciones con estado del cache actual.</span>
+              </div>
+              <div class="mareas-cmd-item">
+                <code>mareas_ver_contexto</code>
+                <span>Muestra el contexto completo renderizado por la vista.</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </section>
+
+    </div>
+  </div>
+</div>
+{{ stations|json_script:"mareas-stations-data" }}
+{% endblock %}
+{% block extra_js %}
+<script src="{% static 'js/mareas.js' %}"></script>
+{% endblock %}

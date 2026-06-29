@@ -1,0 +1,19 @@
+{
+  "id": "/apps/mareas/",
+  "name": "Mareas",
+  "short_name": "Mareas",
+  "description": "Consulta rápida de marea, clima y próximos días.",
+  "start_url": "/apps/mareas/",
+  "scope": "/apps/mareas/",
+  "display": "standalone",
+  "background_color": "#0c1a29",
+  "theme_color": "#0c1a29",
+  "icons": [
+    {
+      "src": "/static/pwa/icon-mareas.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
