@@ -1,0 +1,5 @@
+# Capa de datos historica (BigQuery + dbt). No requerido para correr la
+# app Django - separado de requirements_mareas.txt a proposito para no
+# agregar peso a un deploy que solo sirve desde el cache JSON local.
+google-cloud-bigquery>=3.25,<4.0
+dbt-bigquery>=1.8,<2.0

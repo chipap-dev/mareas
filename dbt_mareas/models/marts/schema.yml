@@ -1,0 +1,19 @@
+version: 2
+
+models:
+  - name: mareas_por_estacion
+    description: >
+      Mart historico que combina marea (INA) y clima (SMN) por fecha y
+      hora, para San Fernando (la unica estacion cargada a BigQuery -
+      ver dbt_mareas/models/staging/sources.yml).
+    columns:
+      - name: estacion
+        description: Id de la estacion, del catalogo real en estaciones.json.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['san_fernando']
+      - name: fecha
+        tests:
+          - not_null

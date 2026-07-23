@@ -1,0 +1,32 @@
+{
+  "datos": [
+    {
+      "fecha": "2026-07-22",
+      "hora": "00:00:00",
+      "altura_minima": 1.5,
+      "altura_maxima": 1.7,
+      "altura_promedio": 1.6,
+      "temperatura": 18.2,
+      "viento_direccion": 90.0,
+      "viento_direccion_abreviatura": "E",
+      "viento_direccion_nombre": "Este",
+      "viento_direccion_grados": 90.0,
+      "viento_km_h": 12,
+      "precipitacion_mm": 0.0
+    },
+    {
+      "fecha": "2026-07-22",
+      "hora": "01:00:00",
+      "altura_minima": 1.4,
+      "altura_maxima": 1.6,
+      "altura_promedio": 1.5,
+      "temperatura": 17.9,
+      "viento_direccion": 90.0,
+      "viento_direccion_abreviatura": "E",
+      "viento_direccion_nombre": "Este",
+      "viento_direccion_grados": 90.0,
+      "viento_km_h": 10,
+      "precipitacion_mm": 0.2
+    }
+  ]
+}

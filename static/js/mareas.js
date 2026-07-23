@@ -552,3 +552,51 @@ document.addEventListener("DOMContentLoaded", () => {
   setupChartDrag();
   applySelection();
 });
+
+document.addEventListener("DOMContentLoaded", () => {
+  const lightbox = document.getElementById("mareas-lightbox");
+  const lightboxImg = document.getElementById("mareas-lightbox-img");
+  const closeButton = lightbox?.querySelector(".mareas-lightbox-close");
+  const triggers = document.querySelectorAll(".mareas-shot-btn");
+
+  if (!lightbox || !lightboxImg || !triggers.length) {
+    return;
+  }
+
+  // <main> tiene position:relative + z-index, así que crea su propio stacking
+  // context: ningún z-index de acá adentro puede superar al header/back-to-top
+  // mientras el lightbox siga siendo descendiente de <main>. Lo movemos a
+  // body para que quede hermano de esos elementos y el z-index sí compare.
+  document.body.appendChild(lightbox);
+
+  const openLightbox = (src, alt) => {
+    lightboxImg.src = src;
+    lightboxImg.alt = alt || "";
+    lightbox.hidden = false;
+  };
+
+  const closeLightbox = () => {
+    lightbox.hidden = true;
+    lightboxImg.src = "";
+  };
+
+  triggers.forEach((trigger) => {
+    trigger.addEventListener("click", () => {
+      openLightbox(trigger.dataset.lightboxSrc, trigger.dataset.lightboxAlt);
+    });
+  });
+
+  closeButton?.addEventListener("click", closeLightbox);
+
+  lightbox.addEventListener("click", (event) => {
+    if (event.target === lightbox) {
+      closeLightbox();
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !lightbox.hidden) {
+      closeLightbox();
+    }
+  });
+});

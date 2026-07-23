@@ -7,10 +7,13 @@ Formas de ejecutar:
 """
 
 import json
+import logging
 
 from django.core.management.base import BaseCommand, CommandError
 
 from mareas.services.admin_ops import refresh_real_data
+
+logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
@@ -41,4 +44,9 @@ class Command(BaseCommand):
                 self.stderr.write(f"{error['key']}: {error['error']}")
 
         if result["errors"]:
-            raise CommandError("Algunas estaciones no pudieron actualizarse.")
+            for error in result["errors"]:
+                logger.warning("Estacion degradada (%s): %s", error["key"], error["error"])
+
+        if not result["results"]:
+            # Ninguna estacion pudo actualizarse: fallo duro, debe bloquear el pipeline.
+            raise CommandError("Ninguna estacion pudo actualizarse.")

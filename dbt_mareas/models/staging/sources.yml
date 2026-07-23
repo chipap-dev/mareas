@@ -1,0 +1,42 @@
+version: 2
+
+sources:
+  - name: mareas_raw
+    database: "{{ env_var('GCP_PROJECT_ID', 'chipap') }}"
+    schema: "{{ env_var('GCP_DATASET_RAW', 'mareas_raw') }}"
+    tables:
+      # Decision de alcance: mareas_cargar_bigquery solo carga San
+      # Fernando (ver airflow_dags/mareas_dag.py). Rosario y Zarate se
+      # siguen sirviendo en vivo desde el cache JSON local (misma UI,
+      # sin cambios), pero no entran a BigQuery/dbt: no aportaban
+      # analisis historico real (INA dejo de generar corridas nuevas
+      # para esas dos desde 2026-06-26, calId=489) y no tenia sentido
+      # pagar por cargarlas. Por eso freshness va directo sobre
+      # `lecturas`, sin necesidad de separarla por grupo de estacion.
+      - name: lecturas
+        description: >
+          Lecturas crudas de marea (INA) y clima (SMN) de San Fernando,
+          cargadas de forma incremental (MERGE) por el management
+          command `mareas_cargar_bigquery`. Una fila por fecha + hora +
+          fuente_origen.
+        columns:
+          - name: estacion
+            description: Id de la estacion (coincide con estaciones.json). Siempre 'san_fernando'.
+          - name: fecha
+          - name: hora
+          - name: altura_marea
+            description: Solo poblado en filas fuente_origen = 'ina'.
+          - name: temperatura
+            description: Solo poblado en filas fuente_origen = 'smn'.
+          - name: viento_velocidad
+          - name: viento_direccion
+          - name: lluvia
+          - name: fuente_origen
+            description: "Origen del dato: 'ina' o 'smn'."
+          - name: marca_temporal_carga
+            description: Timestamp UTC del momento en que corrio la carga.
+        config:
+          loaded_at_field: marca_temporal_carga
+          freshness:
+            warn_after: {count: 30, period: hour}
+            error_after: {count: 48, period: hour}

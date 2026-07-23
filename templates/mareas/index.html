@@ -13,7 +13,7 @@
 {% block og_tags %}
 <meta property="og:type" content="website" />
 <meta property="og:url" content="{{ request.build_absolute_uri }}" />
-<meta property="og:title" content="Mareas — Alturas y clima | Chipap" />
+<meta property="og:title" content="Mareas - Alturas y clima | Chipap" />
 <meta property="og:description" content="Consultá alturas de marea, clima y próximos días sin revisar varias fuentes por separado." />
 <meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'img/logos/mareas.png' %}" />
 <meta property="og:image:alt" content="Mareas" />
@@ -22,7 +22,7 @@
 <meta name="theme-color" content="#235f9e" />
 {% endblock %}
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/mareas.css' %}?v=20260615k" />
+<link rel="stylesheet" href="{% static 'css/mareas.css' %}?v=20260723d" />
 {% endblock %}
 
 {% block content %}
@@ -35,7 +35,13 @@
         <div class="mareas-bc-path">
           <span class="mareas-bc-eyebrow">// SISTEMAS</span> / mareas
         </div>
-        <a href="/" class="mareas-bc-back">← volver a sistemas</a>
+        <div class="mareas-bc-right">
+          <a href="#mareas-tecnico" class="mareas-bc-tech">ver ficha técnica</a>
+          <span class="mareas-bc-sep" aria-hidden="true">·</span>
+          <a href="https://chipap.net/apps/mareas/" class="mareas-bc-tech" target="_blank" rel="noopener">ver esta misma app en producción</a>
+          <span class="mareas-bc-sep" aria-hidden="true">·</span>
+          <a href="/" class="mareas-bc-back">← volver a sistemas</a>
+        </div>
       </div>
 
       <!-- DASHBOARD PANEL -->
@@ -242,10 +248,10 @@
         <div class="mareas-tech-header">
           <span class="mareas-tech-eyebrow">// DETALLE TÉCNICO</span>
           <h2 class="mareas-tech-title">Arquitectura e implementación</h2>
-          <p class="mareas-tech-intro">Fuentes de datos, procesamiento y tecnologías aplicadas. Para equipos técnicos, clientes y reclutadores.</p>
+          <p class="mareas-tech-intro">Un pipeline sirve la web en tiempo real. Otro construye el historial de marea y clima en BigQuery.</p>
         </div>
 
-        <!-- pipeline -->
+        <!-- pipeline: ruta del usuario -->
         <div class="mareas-pipeline-wrap">
           <div class="mareas-pipeline">
             <div class="mareas-pipeline-node">
@@ -280,7 +286,77 @@
           </div>
         </div>
 
-        <!-- fuentes -->
+        <div class="mareas-pipeline-connector">+ en paralelo, para el historial ↓</div>
+
+        <!-- pipeline: capa de datos -->
+        <div class="mareas-pipeline-wrap mareas-datalayer-pipeline">
+          <div class="mareas-pipeline">
+            <div class="mareas-pipeline-node">
+              <div class="mareas-pipeline-badge">json</div>
+              <strong>Cache local</strong>
+              <span>por estación</span>
+            </div>
+            <span class="mareas-pipeline-arrow" aria-hidden="true">→</span>
+            <div class="mareas-pipeline-node">
+              <div class="mareas-pipeline-badge">bq</div>
+              <strong>BigQuery</strong>
+              <span>MERGE, sin duplicados</span>
+            </div>
+            <span class="mareas-pipeline-arrow" aria-hidden="true">→</span>
+            <div class="mareas-pipeline-node">
+              <div class="mareas-pipeline-badge">dbt</div>
+              <strong>dbt</strong>
+              <span>staging → mart</span>
+            </div>
+            <span class="mareas-pipeline-arrow" aria-hidden="true">→</span>
+            <div class="mareas-pipeline-node mareas-pipeline-node-out">
+              <div class="mareas-pipeline-badge is-out">daily</div>
+              <strong>Airflow</strong>
+              <span>orquesta y testea</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- capturas reales: prueba de que esto corrió de verdad -->
+        <div class="mareas-shots">
+          <figure class="mareas-shot">
+            <button type="button" class="mareas-shot-btn" data-lightbox-src="{% static 'img/pipeline/airflow_dag_exitoso.png' %}" data-lightbox-alt="Ejecución exitosa del DAG mareas_dag en Airflow">
+              <img src="{% static 'img/pipeline/airflow_dag_exitoso.png' %}" alt="Ejecución exitosa del DAG mareas_dag en Airflow" loading="lazy" />
+            </button>
+            <figcaption>Airflow: actualizar_cache, cargar_bigquery, dbt_run y dbt_test en verde</figcaption>
+          </figure>
+          <figure class="mareas-shot">
+            <button type="button" class="mareas-shot-btn" data-lightbox-src="{% static 'img/pipeline/dbt_lineage.png' %}" data-lightbox-alt="Grafo de lineage de dbt, de raw a staging a mart a tests">
+              <img src="{% static 'img/pipeline/dbt_lineage.png' %}" alt="Grafo de lineage de dbt, de raw a staging a mart a tests" loading="lazy" />
+            </button>
+            <figcaption>dbt: lineage de raw → staging → mart → tests</figcaption>
+          </figure>
+          <figure class="mareas-shot">
+            <button type="button" class="mareas-shot-btn" data-lightbox-src="{% static 'img/pipeline/dbt_database.png' %}" data-lightbox-alt="Detalle del modelo mareas_por_estacion en dbt docs">
+              <img src="{% static 'img/pipeline/dbt_database.png' %}" alt="Detalle del modelo mareas_por_estacion en dbt docs" loading="lazy" />
+            </button>
+            <figcaption>mareas_por_estacion en producción: 1.354 filas</figcaption>
+          </figure>
+        </div>
+
+        <div class="mareas-lightbox" id="mareas-lightbox" hidden>
+          <button type="button" class="mareas-lightbox-close" aria-label="Cerrar imagen ampliada">&times;</button>
+          <img class="mareas-lightbox-img" id="mareas-lightbox-img" src="" alt="" />
+        </div>
+
+        <!-- decisiones de diseño -->
+        <div class="mareas-highlights">
+          <div class="mareas-highlight-item">
+            <strong>MERGE, no append ciego</strong>
+            <p>La ventana de pronóstico local se solapa día a día, así que un append ciego duplicaría filas sin límite. Cada corrida hace MERGE por estación+fecha+hora: inserta lo nuevo, actualiza lo que cambió, y el historial de marea y clima queda disponible sin duplicados ni costo creciente.</p>
+          </div>
+          <div class="mareas-highlight-item">
+            <strong>Degradación parcial, no falla total</strong>
+            <p>Cuando una fuente externa se atrasa o deja de responder, el pipeline no aborta todo el run: sigue actualizando el resto normalmente y loggea el problema puntual como warning.</p>
+          </div>
+        </div>
+
+        <!-- fuentes + capa de datos + arquitectura, una sola grilla -->
         <div class="mareas-fuentes">
 
           <div class="mareas-detail-card mareas-detail-ina">
@@ -288,7 +364,7 @@
               <span class="mareas-detail-card-label">FUENTE DE MAREAS</span>
             </div>
             <h3>INA</h3>
-            <p class="mareas-detail-org">Instituto Nacional del Agua — REST JSON</p>
+            <p class="mareas-detail-org">Instituto Nacional del Agua - REST JSON</p>
             <a class="mareas-detail-url mareas-detail-url-link" href="https://alerta.ina.gob.ar/pub/gui/datosProno&calId=432&seriesId=26202&timeStart=now-1days&timeEnd=now+4days&auto=true" target="_blank" rel="noopener">alerta.ina.gob.ar/pub/gui/datosProno<br>&amp;calId=432&amp;seriesId=26202<br>&amp;timeStart=now-1days&amp;timeEnd=now+4days</a>
             <p class="mareas-detail-sublabel mareas-sublabel-ina">LA API ENTREGA</p>
             <ul class="mareas-detail-list mareas-list-ina">
@@ -308,7 +384,7 @@
               <span class="mareas-detail-card-label">FUENTE DE CLIMA</span>
             </div>
             <h3>SMN</h3>
-            <p class="mareas-detail-org">Servicio Meteorológico Nacional — ZIP descarga</p>
+            <p class="mareas-detail-org">Servicio Meteorológico Nacional - ZIP descarga</p>
             <div class="mareas-detail-url">GET ssl.smn.gob.ar/dpd/zipopendata.php<br>?dato=pron5d</div>
             <p class="mareas-detail-sublabel mareas-sublabel-smn">LA API ENTREGA</p>
             <ul class="mareas-detail-list mareas-list-smn">
@@ -325,16 +401,63 @@
             </ul>
           </div>
 
+          <div class="mareas-detail-card mareas-detail-bq">
+            <div class="mareas-detail-card-head">
+              <span class="mareas-detail-card-label">CARGA</span>
+            </div>
+            <h3>BigQuery</h3>
+            <p class="mareas-detail-org">mareas_raw.lecturas - MERGE incremental</p>
+            <p class="mareas-detail-sublabel mareas-sublabel-bq">EN NÚMEROS</p>
+            <ul class="mareas-detail-list mareas-list-bq">
+              <li>Primera carga: 195 filas (101 San Fernando, 47 Rosario, 47 Zárate)</li>
+              <li>Hoy solo San Fernando: Rosario/Zárate se muestran en vivo pero no se cargan a BigQuery</li>
+              <li>Cada ejecución actualiza por estación+fecha+hora: nunca duplica</li>
+            </ul>
+          </div>
+
+          <div class="mareas-detail-card mareas-detail-dbt">
+            <div class="mareas-detail-card-head">
+              <span class="mareas-detail-card-label">MODELADO</span>
+            </div>
+            <h3>dbt</h3>
+            <p class="mareas-detail-org">2 stagings + 1 mart, full outer join</p>
+            <p class="mareas-detail-sublabel mareas-sublabel-dbt">HACE</p>
+            <ul class="mareas-detail-list mareas-list-dbt">
+              <li>stg_mareas_ina / stg_mareas_smn separan por fuente, sin transformar</li>
+              <li>mareas_por_estacion cruza marea y clima por estación, fecha y hora</li>
+            </ul>
+            <p class="mareas-detail-sublabel mareas-sublabel-dbt">TESTS</p>
+            <ul class="mareas-detail-list mareas-list-dbt">
+              <li>Genéricos: not_null y accepted_values sobre el mart</li>
+              <li>assert_san_fernando_pronostico_reciente - error si se atrasa</li>
+              <li>assert_staging_sin_duplicados - confirma que el MERGE no dejó duplicados</li>
+            </ul>
+          </div>
+
+          <div class="mareas-detail-card mareas-detail-airflow">
+            <div class="mareas-detail-card-head">
+              <span class="mareas-detail-card-label">ORQUESTACIÓN</span>
+            </div>
+            <h3>Airflow</h3>
+            <p class="mareas-detail-org">Motor en el repo hermano (imagen sobre apache/airflow:3.3.0); el DAG vive en este repo</p>
+            <p class="mareas-detail-sublabel mareas-sublabel-airflow">HACE</p>
+            <ul class="mareas-detail-list mareas-list-airflow">
+              <li>actualizar_cache → cargar_bigquery → dbt_run → dbt_test, todos los días</li>
+              <li>El repo hermano monta este código como volumen: código y credenciales, nada más</li>
+              <li>El DAG viaja por script, no por symlink (compatibilidad con Windows)</li>
+            </ul>
+          </div>
+
           <div class="mareas-detail-card mareas-detail-arch">
             <div class="mareas-detail-card-head">
               <span class="mareas-detail-card-label">ARQUITECTURA</span>
             </div>
-            <h3>Sin base de datos</h3>
-            <p class="mareas-detail-org">File-based cache — sin ORM ni migraciones</p>
+            <h3>App sin base de datos</h3>
+            <p class="mareas-detail-org">Lo que ve el usuario corre sobre file-based cache - sin ORM ni migraciones</p>
             <div class="mareas-arch-items">
               <div class="mareas-arch-item">
                 <strong>Service layer</strong>
-                <span>mareas/services/ — lectura, transformación y normalización separadas.</span>
+                <span>mareas/services/ separa lectura, transformación y normalización en módulos distintos.</span>
               </div>
               <div class="mareas-arch-item">
                 <strong>Fallback controlado</strong>
@@ -343,6 +466,10 @@
               <div class="mareas-arch-item">
                 <strong>Datos ausentes</strong>
                 <span>Si INA o SMN devuelven un campo vacío, la interfaz lo oculta en lugar de mostrar un valor roto o en blanco.</span>
+              </div>
+              <div class="mareas-arch-item">
+                <strong>Endpoint de refresh protegido</strong>
+                <span>/actualizar/ dispara un refresh real, protegido por token - pensado para un cron externo, no para el visitante.</span>
               </div>
             </div>
           </div>
@@ -359,21 +486,21 @@
               <div class="mareas-techstack-item">
                 <div class="mareas-techstack-head">
                   <span class="mareas-techstack-dot is-orange" aria-hidden="true"></span>
-                  <strong>Python + Django</strong>
+                  <strong>Python 3.11 + Django 4.2</strong>
                 </div>
-                <p>Views, templates, service layer y management commands.</p>
+                <p>Views, templates, service layer y management commands. Whitenoise sirve los estáticos.</p>
               </div>
               <div class="mareas-techstack-item">
                 <div class="mareas-techstack-head">
                   <span class="mareas-techstack-dot is-blue" aria-hidden="true"></span>
-                  <strong>REST API — INA</strong>
+                  <strong>REST API - INA</strong>
                 </div>
-                <p>Fetch con requests, parámetros dinámicos por estación.</p>
+                <p>Fetch con urllib, parámetros dinámicos por estación.</p>
               </div>
               <div class="mareas-techstack-item">
                 <div class="mareas-techstack-head">
                   <span class="mareas-techstack-dot is-green" aria-hidden="true"></span>
-                  <strong>ZIP API — SMN</strong>
+                  <strong>ZIP API - SMN</strong>
                 </div>
                 <p>Descarga, descompresión y parseo de TXT en Python.</p>
               </div>
@@ -393,10 +520,17 @@
               </div>
               <div class="mareas-techstack-item">
                 <div class="mareas-techstack-head">
-                  <span class="mareas-techstack-dot is-green" aria-hidden="true"></span>
-                  <strong>CSS custom properties</strong>
+                  <span class="mareas-techstack-dot is-blue" aria-hidden="true"></span>
+                  <strong>BigQuery + dbt</strong>
                 </div>
-                <p>Temas día / noche / amanecer / atardecer en tiempo real.</p>
+                <p>Carga incremental y modelado en capas, en paralelo, sin afectar la ruta del usuario.</p>
+              </div>
+              <div class="mareas-techstack-item">
+                <div class="mareas-techstack-head">
+                  <span class="mareas-techstack-dot is-green" aria-hidden="true"></span>
+                  <strong>Airflow + Docker</strong>
+                </div>
+                <p>Orquestación diaria en un repo hermano, con imagen propia sobre apache/airflow.</p>
               </div>
             </div>
           </div>
@@ -422,9 +556,28 @@
                 <code>mareas_ver_contexto</code>
                 <span>Muestra el contexto completo renderizado por la vista.</span>
               </div>
+              <div class="mareas-cmd-item">
+                <code>mareas_cargar_bigquery</code>
+                <span>Sube el cache actual a BigQuery (MERGE incremental). Admite --station para una sola estación; en producción solo corre para san_fernando.</span>
+              </div>
             </div>
           </div>
 
+        </div>
+
+        <!-- CTA cierre -->
+        <div class="mareas-cta-final">
+          <div>
+            <div class="mareas-label-mono">EN VIVO</div>
+            <h3 class="mareas-cta-final-title">Demo en producción</h3>
+            <p class="mareas-cta-final-text">La misma app, con los mismos datos, desplegada en producción.</p>
+          </div>
+          <div class="mareas-cta-final-actions">
+            <a class="mareas-cta-final-btn" href="https://chipap.net/apps/mareas/" target="_blank" rel="noopener">Ver esta misma app en producción →</a>
+            <a class="mareas-cta-final-btn mareas-cta-final-btn-secondary" href="https://github.com/chipap-dev/mareas" target="_blank" rel="noopener">
+              <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" style="display:inline-block;vertical-align:middle;flex-shrink:0;margin-right:7px"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>Ver el código en GitHub
+            </a>
+          </div>
         </div>
 
       </section>

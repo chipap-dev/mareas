@@ -1,5 +1,5 @@
 /* =============================================
-   MAREAS — Rediseño 2026
+   MAREAS - Rediseño 2026
    Fuentes: Space Grotesk + Space Mono (base.html)
    ============================================= */
 
@@ -43,6 +43,29 @@
 .mareas-bc-eyebrow {
   color: #f0591f;
   font-weight: 700;
+}
+
+.mareas-bc-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mareas-bc-tech {
+  font-family: 'Space Mono', monospace;
+  font-size: 12px;
+  color: #9aa1ab;
+  text-decoration: none;
+}
+
+.mareas-bc-tech:hover {
+  color: #5c646e;
+  text-decoration: underline;
+}
+
+.mareas-bc-sep {
+  font-size: 12px;
+  color: #d3d8dd;
 }
 
 .mareas-bc-back {
@@ -827,7 +850,7 @@
   font-size: 17px;
   line-height: 1.55;
   color: #5c646e;
-  max-width: 560px;
+  max-width: none;
   margin: 16px 0 0;
 }
 
@@ -846,6 +869,7 @@
 
 .mareas-pipeline-node {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -925,6 +949,7 @@
 }
 
 .mareas-detail-card {
+  min-width: 0;
   background: #fff;
   border: 1px solid rgba(23, 34, 46, .1);
   border-radius: 14px;
@@ -1050,6 +1075,7 @@
 }
 
 .mareas-arch-item {
+  min-width: 0;
   background: #f6f1e6;
   border: 1px solid rgba(23, 34, 46, .07);
   border-radius: 11px;
@@ -1086,6 +1112,7 @@
 }
 
 .mareas-techstack-card {
+  min-width: 0;
   background: #fff;
   border: 1px solid rgba(23, 34, 46, .1);
   border-radius: 18px;
@@ -1142,6 +1169,7 @@
 .mareas-techstack-dot.is-green  { background: #2ca36a; }
 
 .mareas-cli-card {
+  min-width: 0;
   background: #17222e;
   border-radius: 18px;
   box-shadow: 0 14px 34px rgba(23, 34, 46, .16);
@@ -1200,6 +1228,7 @@
 
 .mareas-cmd-item code {
   display: block;
+  flex: 0 0 205px;
   font-family: 'Space Mono', monospace;
   font-size: 13px;
   color: #fff;
@@ -1210,10 +1239,234 @@
 
 .mareas-cmd-item span {
   display: block;
+  flex: 1 1 auto;
+  min-width: 0;
   font-size: 12.5px;
   line-height: 1.45;
   color: #8b94a0;
   margin-top: 4px;
+}
+
+/* ---- DATA LAYER (BigQuery + dbt + Airflow) ---- */
+
+.mareas-pipeline-connector {
+  text-align: center;
+  font-family: 'Space Mono', monospace;
+  font-size: 12.5px;
+  letter-spacing: .5px;
+  color: #9aa1ab;
+  margin: 2px 0 18px;
+}
+
+.mareas-datalayer-pipeline {
+  margin-top: 0;
+  margin-bottom: 28px;
+}
+
+.mareas-detail-bq {
+  border-top: 3px solid #235f9e;
+}
+
+.mareas-detail-dbt {
+  border-top: 3px solid #f0591f;
+}
+
+.mareas-detail-airflow {
+  border-top: 3px solid #2ca36a;
+}
+
+.mareas-sublabel-bq { color: #235f9e; }
+.mareas-sublabel-dbt { color: #f0591f; }
+.mareas-sublabel-airflow { color: #2ca36a; }
+
+.mareas-list-bq li::before { color: #235f9e; }
+.mareas-list-dbt li::before { color: #f0591f; }
+.mareas-list-airflow li::before { color: #2ca36a; }
+
+.mareas-highlights {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-top: 28px;
+}
+
+.mareas-highlight-item {
+  min-width: 0;
+  background: #f6f1e6;
+  border: 1px solid rgba(23, 34, 46, .07);
+  border-radius: 13px;
+  padding: 18px 20px;
+}
+
+.mareas-highlight-item strong {
+  display: block;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 15.5px;
+  font-weight: 700;
+  letter-spacing: -.2px;
+  margin-bottom: 7px;
+  color: #17222e;
+}
+
+.mareas-highlight-item p {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: #5c646e;
+  margin: 0;
+}
+
+.mareas-shots {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+  margin-top: 24px;
+}
+
+.mareas-shot {
+  min-width: 0;
+  margin: 0;
+}
+
+.mareas-shot-btn {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: zoom-in;
+}
+
+.mareas-shot-btn img {
+  display: block;
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid rgba(23, 34, 46, .1);
+  box-shadow: 0 10px 24px rgba(23, 34, 46, .08);
+  transition: box-shadow .15s ease;
+}
+
+.mareas-shot-btn:hover img,
+.mareas-shot-btn:focus-visible img {
+  box-shadow: 0 10px 24px rgba(23, 34, 46, .18);
+}
+
+.mareas-shot figcaption {
+  font-size: 12px;
+  line-height: 1.4;
+  color: #8a909a;
+  margin-top: 9px;
+}
+
+.mareas-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  background: rgba(15, 20, 26, .88);
+}
+
+.mareas-lightbox[hidden] {
+  display: none;
+}
+
+.mareas-lightbox-img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 10px;
+  box-shadow: 0 30px 70px rgba(0, 0, 0, .5);
+}
+
+.mareas-lightbox-close {
+  position: absolute;
+  top: 24px;
+  right: 28px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, .12);
+  color: #fff;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.mareas-lightbox-close:hover {
+  background: rgba(255, 255, 255, .22);
+}
+
+/* ---- CTA CIERRE ---- */
+
+.mareas-cta-final {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  background: linear-gradient(165deg, #2a6bb0 0%, #17222e 100%);
+  border-radius: 18px;
+  padding: 30px 32px;
+  margin-top: 24px;
+}
+
+.mareas-cta-final-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  margin: 6px 0 6px;
+  letter-spacing: -.4px;
+  color: #fff;
+}
+
+.mareas-cta-final-text {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: #b7c3d1;
+  margin: 0;
+  max-width: 420px;
+}
+
+.mareas-cta-final-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 13px 26px;
+  border-radius: 999px;
+  background: #fff;
+  color: #17222e;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 14.5px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: transform 120ms ease, box-shadow 160ms ease;
+}
+
+.mareas-cta-final-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, .2);
+}
+
+.mareas-cta-final-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.mareas-cta-final-btn-secondary {
+  background: transparent;
+  color: #fff;
+  border: 1.5px solid rgba(255, 255, 255, .35);
+}
+
+.mareas-cta-final-btn-secondary:hover {
+  background: rgba(255, 255, 255, .08);
+  border-color: rgba(255, 255, 255, .6);
 }
 
 /* =============================================
@@ -1246,6 +1499,10 @@
 /* ---- ≤ 820px: 2 columnas fuentes ---- */
 @media (max-width: 820px) {
   .mareas-fuentes {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .mareas-shots {
     grid-template-columns: repeat(2, 1fr);
   }
 }
@@ -1342,6 +1599,14 @@
     grid-template-columns: 1fr;
   }
 
+  .mareas-highlights {
+    grid-template-columns: 1fr;
+  }
+
+  .mareas-shots {
+    grid-template-columns: 1fr;
+  }
+
   .mareas-techstack {
     grid-template-columns: 1fr;
   }
@@ -1353,6 +1618,23 @@
 
   .mareas-cli-card {
     padding: 22px 18px;
+  }
+
+  .mareas-cta-final {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 24px 20px;
+  }
+
+  .mareas-cta-final-actions {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .mareas-cta-final-btn {
+    width: 100%;
+    text-align: center;
   }
 
   /* Stack/CLI: reducir títulos y apilar código+descripción */
@@ -1374,6 +1656,7 @@
   }
 
   .mareas-cmd-item code {
+    flex: 0 0 auto;
     font-size: 12px;
     overflow-wrap: anywhere;
   }
