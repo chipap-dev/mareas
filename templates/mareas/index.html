@@ -22,7 +22,7 @@
 <meta name="theme-color" content="#235f9e" />
 {% endblock %}
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/mareas.css' %}?v=20260723d" />
+<link rel="stylesheet" href="{% static 'css/mareas.css' %}?v=20260723e" />
 {% endblock %}
 
 {% block content %}
@@ -36,11 +36,20 @@
           <span class="mareas-bc-eyebrow">// SISTEMAS</span> / mareas
         </div>
         <div class="mareas-bc-right">
-          <a href="#mareas-tecnico" class="mareas-bc-tech">ver ficha técnica</a>
+          <a href="#mareas-tecnico" class="mareas-bc-tech" title="Ver ficha técnica" aria-label="Ver ficha técnica">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><circle cx="12" cy="7.5" r="1" fill="currentColor" stroke="none"/></svg>
+            <span class="mareas-bc-label">ver ficha técnica</span>
+          </a>
           <span class="mareas-bc-sep" aria-hidden="true">·</span>
-          <a href="https://chipap.net/apps/mareas/" class="mareas-bc-tech" target="_blank" rel="noopener">ver esta misma app en producción</a>
+          <a href="https://chipap.net/apps/mareas/" class="mareas-bc-tech" target="_blank" rel="noopener" title="Ver esta misma app en producción" aria-label="Ver esta misma app en producción">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            <span class="mareas-bc-label">ver esta misma app en producción</span>
+          </a>
           <span class="mareas-bc-sep" aria-hidden="true">·</span>
-          <a href="/" class="mareas-bc-back">← volver a sistemas</a>
+          <a href="/" class="mareas-bc-back" title="Volver a sistemas" aria-label="Volver a sistemas">
+            <span aria-hidden="true">←</span>
+            <span class="mareas-bc-label">volver a sistemas</span>
+          </a>
         </div>
       </div>
 
@@ -71,9 +80,21 @@
               <div class="mareas-dash-subtitle">marea, clima y próximos días · datos del INA + SMN</div>
             </div>
           </div>
-          <div class="mareas-status-badge">
-            <span class="mareas-status-dot" aria-hidden="true"></span>
-            SIEMPRE ACTUALIZADO
+          <div class="mareas-dashhead-actions">
+            <div class="mareas-share" id="mareas-share">
+              <button type="button" class="mareas-share-btn" id="mareas-share-btn" aria-haspopup="true" aria-expanded="false" aria-label="Compartir" title="Compartir">
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="10.6" x2="15.4" y2="6.4"/><line x1="8.6" y1="13.4" x2="15.4" y2="17.6"/></svg>
+                <span>Compartir</span>
+              </button>
+              <div class="mareas-share-menu" id="mareas-share-menu" hidden>
+                <button type="button" class="mareas-share-item" id="mareas-share-copy">Copiar enlace</button>
+                <a class="mareas-share-item" id="mareas-share-wa" target="_blank" rel="noopener" href="#">Compartir por WhatsApp</a>
+              </div>
+            </div>
+            <div class="mareas-status-badge">
+              <span class="mareas-status-dot" aria-hidden="true"></span>
+              SIEMPRE ACTUALIZADO
+            </div>
           </div>
         </div>
 
@@ -588,5 +609,5 @@
 {{ stations|json_script:"mareas-stations-data" }}
 {% endblock %}
 {% block extra_js %}
-<script src="{% static 'js/mareas.js' %}"></script>
+<script src="{% static 'js/mareas.js' %}?v=20260723a"></script>
 {% endblock %}

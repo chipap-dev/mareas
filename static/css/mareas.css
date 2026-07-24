@@ -52,6 +52,9 @@
 }
 
 .mareas-bc-tech {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   font-family: 'Space Mono', monospace;
   font-size: 12px;
   color: #9aa1ab;
@@ -69,6 +72,9 @@
 }
 
 .mareas-bc-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   font-family: 'Space Mono', monospace;
   font-size: 13px;
   color: #235f9e;
@@ -159,6 +165,75 @@
   border-radius: 50%;
   background: #7fd6a8;
   flex-shrink: 0;
+}
+
+/* ---- COMPARTIR ---- */
+
+.mareas-dashhead-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.mareas-share {
+  position: relative;
+}
+
+.mareas-share-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  letter-spacing: .5px;
+  color: #eafff1;
+  background: rgba(0, 0, 0, .18);
+  padding: 7px 13px;
+  border-radius: 999px;
+  white-space: nowrap;
+  transition: background .12s, color .12s;
+}
+
+.mareas-share-btn:hover,
+.mareas-share-btn[aria-expanded="true"] {
+  background: rgba(0, 0, 0, .3);
+  color: #ffffff;
+}
+
+.mareas-share-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 20;
+  min-width: 200px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, .08);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .18);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mareas-share-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #23262b;
+  text-decoration: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.mareas-share-item:hover {
+  background: #f0f2f4;
+  color: #235f9e;
 }
 
 /* ---- CONTROLS ---- */
@@ -1673,6 +1748,29 @@
   .mareas-breadcrumb {
     flex-wrap: wrap;
     gap: 8px;
+  }
+
+  /* Breadcrumb: solo iconos, sin texto, para que entre en una sola línea */
+  .mareas-bc-label {
+    display: none;
+  }
+
+  .mareas-bc-right {
+    gap: 14px;
+  }
+
+  /* Compartir + badge: icono solo para que no se corte "SIEMPRE ACTUALIZADO" */
+  .mareas-dashhead-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .mareas-share-btn span {
+    display: none;
+  }
+
+  .mareas-share-btn {
+    padding: 7px 9px;
   }
 
   .mareas-chart-legend .legend-label-full {

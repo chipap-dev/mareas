@@ -600,3 +600,67 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 });
+
+/* ── Compartir: copiar enlace / WhatsApp / Web Share API ── */
+document.addEventListener("DOMContentLoaded", () => {
+  const wrap = document.getElementById("mareas-share");
+  const btn = document.getElementById("mareas-share-btn");
+  const menu = document.getElementById("mareas-share-menu");
+  const copyBtn = document.getElementById("mareas-share-copy");
+  const waLink = document.getElementById("mareas-share-wa");
+  const stationSelect = document.getElementById("mareas-station-select");
+  if (!wrap || !btn || !menu) return;
+
+  function shareText() {
+    const stationName = stationSelect && stationSelect.selectedIndex >= 0
+      ? stationSelect.options[stationSelect.selectedIndex].text
+      : "";
+    return stationName ? `Pronóstico de mareas — ${stationName}` : "Pronóstico de mareas";
+  }
+
+  function closeMenu() {
+    menu.hidden = true;
+    btn.setAttribute("aria-expanded", "false");
+  }
+
+  function openMenu() {
+    const url = window.location.href;
+    if (waLink) waLink.href = "https://wa.me/?text=" + encodeURIComponent(shareText() + " " + url);
+    menu.hidden = false;
+    btn.setAttribute("aria-expanded", "true");
+  }
+
+  btn.addEventListener("click", () => {
+    if (navigator.share) {
+      navigator.share({ title: document.title, text: shareText(), url: window.location.href }).catch(() => {});
+      return;
+    }
+    if (menu.hidden) openMenu(); else closeMenu();
+  });
+
+  if (copyBtn) {
+    copyBtn.addEventListener("click", () => {
+      const url = window.location.href;
+      const original = copyBtn.textContent;
+      const showCopied = () => {
+        copyBtn.textContent = "¡Enlace copiado!";
+        setTimeout(() => { copyBtn.textContent = original; }, 1800);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(showCopied).catch(() => window.prompt("Copiá el enlace:", url));
+      } else {
+        window.prompt("Copiá el enlace:", url);
+      }
+      closeMenu();
+    });
+  }
+
+  document.addEventListener("click", (event) => {
+    if (menu.hidden || wrap.contains(event.target)) return;
+    closeMenu();
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeMenu();
+  });
+});
