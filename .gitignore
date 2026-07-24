@@ -20,3 +20,7 @@ dbt_mareas/logs/
 !mareas/services/data/**/*.json
 !mareas/tests/fixtures/**/*.json
 !**/estaciones.json
+
+# Cache runtime de marea/clima por estación: se regenera en cada corrida,
+# no tiene sentido versionarlo (genera diff en cada ejecución local)
+mareas/services/data/cache/*.json
