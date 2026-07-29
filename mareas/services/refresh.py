@@ -214,6 +214,36 @@ def _build_ina_url(station, start_date, end_date):
     )
 
 
+def fetch_ina_raw_rows(station, start_date, end_date):
+    """
+    Trae y parsea las lecturas crudas del INA para una estacion, sin
+    agregar. Devuelve (data, corid): `data` es la lista tal como la
+    entrega la API (prono_id, timestart, timeend, valor - 5 filas por
+    fecha+hora) y `corid` es el id de corrida (responseHeader.corid).
+    Usado tanto por refresh_station_data (que agrega con
+    _group_ina_rows) como por la carga de crudo a BigQuery, que no
+    agrega nada.
+    """
+    url = _build_ina_url(station, start_date, end_date)
+
+    try:
+        raw_payload = _request_bytes(url)
+    except (HTTPError, URLError, TimeoutError) as exc:
+        raise RuntimeError(f"INA no disponible para {station['key']}: {exc}") from exc
+
+    try:
+        parsed = json.loads(raw_payload.decode("utf-8"))
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"JSON invalido del INA para {station['key']}: {exc}") from exc
+
+    data = parsed.get("data", [])
+    if not data:
+        raise RuntimeError(f"INA no devolvio datos para {station['key']}.")
+
+    corid = parsed.get("responseHeader", {}).get("corid")
+    return data, corid
+
+
 def _load_previous_weather(station_key):
     try:
         records, _updated_at, _path = load_station_cache(station_key)
@@ -315,21 +345,8 @@ def refresh_station_data(station, forecast_result, now=None):
     now = now or datetime.now()
     start_date = now.date()
     end_date = start_date + timedelta(days=4)
-    url = _build_ina_url(station, start_date, end_date)
 
-    try:
-        raw_payload = _request_bytes(url)
-    except (HTTPError, URLError, TimeoutError) as exc:
-        raise RuntimeError(f"INA no disponible para {station['key']}: {exc}") from exc
-
-    try:
-        parsed = json.loads(raw_payload.decode("utf-8"))
-    except json.JSONDecodeError as exc:
-        raise RuntimeError(f"JSON invalido del INA para {station['key']}: {exc}") from exc
-
-    data = parsed.get("data", [])
-    if not data:
-        raise RuntimeError(f"INA no devolvio datos para {station['key']}.")
+    data, _corid = fetch_ina_raw_rows(station, start_date, end_date)
 
     grouped = _group_ina_rows(data, start_date)
     merged = _merge_weather(station["key"], station, grouped, forecast_result)
