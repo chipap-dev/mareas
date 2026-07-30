@@ -16,9 +16,13 @@ sources:
       - name: lecturas
         description: >
           Lecturas crudas de marea (INA) y clima (SMN) de San Fernando,
-          cargadas de forma incremental (MERGE) por el management
-          command `mareas_cargar_bigquery`. Una fila por fecha + hora +
-          fuente_origen.
+          cargadas append-only (sin MERGE, sin DML - el sandbox de
+          BigQuery no lo permite) por el management command
+          `mareas_cargar_bigquery`. Una fila por fecha + hora +
+          fuente_origen. El lado INA solo carga fecha+hora con mas de
+          48h de antiguedad (ver docs/decisiones_carga_incremental_
+          bigquery.md); el lado SMN se carga sin esperar, apenas
+          aparece en el pronostico diario.
         columns:
           - name: estacion
             description: Id de la estacion (coincide con estaciones.json). Siempre 'san_fernando'.
@@ -33,6 +37,47 @@ sources:
           - name: lluvia
           - name: fuente_origen
             description: "Origen del dato: 'ina' o 'smn'."
+          - name: marca_temporal_carga
+            description: Timestamp UTC del momento en que corrio la carga.
+        config:
+          loaded_at_field: marca_temporal_carga
+          freshness:
+            warn_after: {count: 30, period: hour}
+            error_after: {count: 48, period: hour}
+
+      # Tabla nueva, independiente de `lecturas` (conviven, ninguna
+      # reemplaza a la otra). Nace vacia el dia que se despliega esta
+      # carga - no tiene historico anterior, a diferencia de
+      # `lecturas` (ver el coalesce en mareas_por_estacion.sql).
+      - name: altura_marea_por_miembro
+        description: >
+          Las 5 lecturas crudas de altura de marea que el INA devuelve
+          por fecha + hora, sin agregar (ver
+          mareas/services/refresh.py::fetch_ina_raw_rows y
+          mareas/services/bigquery_export.py::assign_ina_miembros).
+          Cargada append-only por mareas_cargar_bigquery, reusando la
+          misma consulta al INA que el lado INA de `lecturas` (misma
+          ventana hacia atras, mismo filtro de 48h de asentamiento). No
+          viene del cache local, que solo tiene "hoy en adelante". Solo
+          San Fernando, mismo alcance que `lecturas` (ver arriba).
+        columns:
+          - name: estacion
+            description: Id de la estacion (coincide con estaciones.json). Siempre 'san_fernando'.
+          - name: fecha
+          - name: hora
+          - name: ina_miembro
+            description: >
+              0-4, asignado ordenando las 5 lecturas de cada fecha+hora
+              por altura_valor ascendente (desempate por prono_id
+              ascendente - ver assign_ina_miembros). No es el prono_id
+              crudo: ese es secuencial por corrida del INA y no sirve
+              como clave entre corridas distintas.
+          - name: altura_valor
+            description: Altura de marea de esa lectura puntual, sin agregar.
+          - name: prono_id
+            description: Id de lectura del INA. Columna de trazabilidad, no es parte de la clave.
+          - name: corid
+            description: Id de corrida (corrida de pronostico) del INA. Columna de trazabilidad, no es parte de la clave.
           - name: marca_temporal_carga
             description: Timestamp UTC del momento en que corrio la carga.
         config:

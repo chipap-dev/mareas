@@ -1,17 +1,40 @@
 """
-Carga incremental del cache local de Mareas a BigQuery
-(`mareas_raw.lecturas`), para poder analizar series historicas de
-marea y clima. No corre como parte del flujo que sirve al visitante.
+Carga incremental (append-only) de Mareas a BigQuery, en dos tablas
+independientes del mismo dataset (`mareas_raw`). No corre como parte
+del flujo que sirve al visitante.
 
-Usa MERGE (upsert) en vez de un simple append: la clave natural es
-estacion + fecha + hora + fuente_origen, y cada corrida se queda con
-la version mas reciente (`marca_temporal_carga`) de cada fila. Esto es
-necesario porque el cache local re-sube su ventana completa en cada
-corrida diaria: sin dedup, una misma fecha+hora queda duplicada en el
-raw una vez por cada dia que aparecio en esa ventana (ver
-`mareas/services/bigquery_export.py` y `dbt_mareas/models/staging/`).
-Con MERGE la tabla no crece sin limite - se acota a la cantidad real
-de fecha+hora que existieron alguna vez.
+- `lecturas`: marea (INA) + clima (SMN) por fecha+hora, una fila por
+  fuente_origen. El lado INA sale de una consulta directa al INA con
+  ventana hacia atras (no del cache local, que solo tiene "hoy en
+  adelante" - ver mareas/services/source.py). El lado SMN sigue
+  saliendo del cache local, sin cambios.
+- `altura_marea_por_miembro`: las 5 lecturas crudas de marea que el
+  INA devuelve por hora, sin agregar. Reusa la misma consulta al INA
+  que el lado INA de `lecturas` (antes eran dos fetches separados).
+
+No hay MERGE ni tabla staging: se consulta que (fecha, hora[, columna
+extra]) ya existen en la tabla destino para la estacion, se filtran las
+filas candidatas contra esas claves, y se cargan las que faltan con
+`load_table_from_json` + WRITE_APPEND. Autorecuperable por
+construccion: correr esto dos veces seguidas, o despues de que el DAG
+estuvo caido unos dias, no duplica nada - simplemente no encuentra
+nada nuevo para agregar, o completa lo que falto.
+
+Margen de asentamiento (INA): el INA re-corre su modelo bastante mas
+seguido que "una vez por dia" (se midieron dos corridas con 12 minutos
+de diferencia) y revisa una ventana movil de horas ya pasadas, no solo
+el pronostico futuro - ver docs/decisiones_carga_incremental_bigquery.md,
+seccion 1. Por eso solo se cargan fecha+hora con mas de
+ASENTAMIENTO_HORAS de antiguedad: cargar antes arriesga escribir un
+valor que el INA todavia va a revisar, y sin MERGE no hay forma de
+corregirlo despues.
+
+El SMN no tiene este problema ni esta solucion: no existe un endpoint
+para volver a consultarle una fecha pasada, asi que su lado de
+`lecturas` se carga apenas aparece en el pronostico diario, sin
+esperar nada (ver bigquery_export.py). Consecuencia visible en el mart:
+las ultimas horas van a tener clima sin marea, hasta que esas horas
+crucen el margen de asentamiento.
 
 Forma de ejecutar:
 - python manage.py mareas_cargar_bigquery
@@ -20,27 +43,51 @@ Forma de ejecutar:
 
 import logging
 import os
-import uuid
 from datetime import datetime, timedelta, timezone
 
 from django.core.management.base import BaseCommand, CommandError
 
-from mareas.services.bigquery_export import TABLE_SCHEMA_FIELDS, flatten_station_records
+from mareas.services.bigquery_export import (
+    TABLE_SCHEMA_FIELDS,
+    TABLE_SCHEMA_FIELDS_ALTURA_MIEMBRO,
+    flatten_ina_lecturas_rows,
+    flatten_ina_raw_rows,
+    flatten_smn_lecturas_rows,
+)
+from mareas.services.refresh import fetch_ina_raw_rows, group_ina_rows
 from mareas.services.source import load_station_cache
 from mareas.services.stations import load_station_catalog
 
 logger = logging.getLogger(__name__)
 
 TABLE_NAME = "lecturas"
+TABLE_NAME_ALTURA_MIEMBRO = "altura_marea_por_miembro"
 
-# Tope duro de bytes escaneados por corrida del MERGE. La tabla es
-# minuscula (algunas estaciones, un puñado de filas por dia), asi que
-# esto nunca deberia activarse en uso normal - es una red de seguridad
-# para no depender solo de "los numeros dan chico": si algo hace que la
-# consulta necesite escanear mas de esto, falla en vez de facturar.
+# Tope duro de bytes escaneados por consulta de "que ya existe" contra
+# BigQuery. Las tablas son minusculas (una estacion, un puñado de filas
+# por dia), asi que esto nunca deberia activarse en uso normal - es una
+# red de seguridad para no depender solo de "los numeros dan chico".
 MAX_BYTES_BILLED = 200 * 1024 * 1024  # 200 MB
 
-_MERGE_KEY_COLUMNS = ("estacion", "fecha", "hora", "fuente_origen")
+# Una fecha+hora del INA se carga solo si tiene mas antiguedad que
+# esto respecto al momento de la corrida. Ver docs/decisiones_carga_
+# incremental_bigquery.md, seccion 1: se midio que el INA revisa una
+# ventana movil de ~9-10h hacia atras en cada corrida: 48h da margen
+# amplio sobre eso.
+ASENTAMIENTO_HORAS = 48
+
+# Cuantos dias hacia atras pedirle al INA en cada corrida. La ventana
+# real del INA se midio en ~14 dias (ver decisiones, seccion 1 y 10);
+# pedir de mas no rompe el fetch (se probo: un rango que arranca antes
+# del borde real devuelve parcial, no falla), asi que se deja margen
+# para que el pipeline se autorecupere solo si estuvo caido varios
+# dias. Mas alla de ~(14 - ASENTAMIENTO_HORAS/24) dias de inactividad,
+# la ventana del INA ya descarto esos datos antes de poder cargarlos -
+# eso no lo arregla ningun margen de este numero.
+HISTORIA_DIAS_ATRAS = 20
+
+_CLAVE_LECTURAS = ("fecha", "hora", "fuente_origen")
+_CLAVE_ALTURA_MIEMBRO = ("fecha", "hora", "ina_miembro")
 
 
 def _get_client_and_config():
@@ -51,92 +98,103 @@ def _get_client_and_config():
     location = os.environ["GCP_LOCATION"]
 
     client = bigquery.Client(project=project_id, location=location)
-    table_ref = f"{project_id}.{dataset}.{TABLE_NAME}"
-    return client, table_ref, bigquery
+    return client, project_id, dataset, bigquery
 
 
-def _schema(bigquery):
-    return [bigquery.SchemaField(name, field_type) for name, field_type in TABLE_SCHEMA_FIELDS]
+def _schema(bigquery, schema_fields):
+    return [bigquery.SchemaField(name, field_type) for name, field_type in schema_fields]
 
 
-def _ensure_table(client, table_ref, bigquery):
-    table = bigquery.Table(table_ref, schema=_schema(bigquery))
+def _ensure_table(client, table_ref, bigquery, schema_fields):
+    table = bigquery.Table(table_ref, schema=_schema(bigquery, schema_fields))
     client.create_table(table, exists_ok=True)
 
 
-def _load_staging_table(client, table_ref, bigquery, rows):
+def _existing_keys(client, bigquery, table_ref, key_columns, estacion):
     """
-    Sube `rows` a una tabla temporal (mismo dataset que el target,
-    prefijo `_staging_`), con expiracion de 1 hora como red de
-    seguridad si el borrado explicito de `_drop_staging_table` no
-    llegara a correr. El load job en si no se factura por bytes (solo
-    la carga de datos - a diferencia de una query - es gratis en
-    BigQuery).
+    Que valores de `key_columns` ya existen en `table_ref` para
+    `estacion`. Un SELECT, no un load: cuenta contra el cupo de bytes
+    escaneados (protegido igual con maximum_bytes_billed), nunca contra
+    el de bytes facturados de un load job (que no existe).
     """
-    dataset_ref = table_ref.rsplit(".", 1)[0]
-    staging_table_ref = f"{dataset_ref}._staging_mareas_{uuid.uuid4().hex}"
+    columnas = ", ".join(key_columns)
+    query = f"SELECT DISTINCT {columnas} FROM `{table_ref}` WHERE estacion = @estacion"
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[bigquery.ScalarQueryParameter("estacion", "STRING", estacion)],
+        maximum_bytes_billed=MAX_BYTES_BILLED,
+    )
+    resultado = client.query(query, job_config=job_config).result()
 
-    table = bigquery.Table(staging_table_ref, schema=_schema(bigquery))
-    table.expires = datetime.now(timezone.utc) + timedelta(hours=1)
-    client.create_table(table)
+    claves = set()
+    for fila in resultado:
+        valores = []
+        for columna in key_columns:
+            valor = fila[columna]
+            if hasattr(valor, "isoformat"):
+                valor = valor.isoformat()
+            valores.append(valor)
+        claves.add(tuple(valores))
+    return claves
+
+
+def _append_missing_rows(client, bigquery, table_ref, rows, schema_fields, key_columns, estacion):
+    """
+    Carga solo las filas de `rows` cuya clave (`key_columns`) todavia
+    no existe en `table_ref` para `estacion`. Devuelve cuantas filas
+    nuevas se cargaron. WRITE_APPEND directo al destino: sin tabla
+    staging, sin MERGE.
+    """
+    if not rows:
+        return 0
+
+    existentes = _existing_keys(client, bigquery, table_ref, key_columns, estacion)
+    nuevas = [row for row in rows if tuple(row[columna] for columna in key_columns) not in existentes]
+    if not nuevas:
+        return 0
 
     job_config = bigquery.LoadJobConfig(
-        schema=_schema(bigquery),
-        write_disposition=bigquery.WriteDisposition.WRITE_TRUNCATE,
+        schema=_schema(bigquery, schema_fields),
+        write_disposition=bigquery.WriteDisposition.WRITE_APPEND,
     )
-    job = client.load_table_from_json(rows, staging_table_ref, job_config=job_config)
+    job = client.load_table_from_json(nuevas, table_ref, job_config=job_config)
     job.result()
-    return staging_table_ref
+    return len(nuevas)
 
 
-def _drop_staging_table(client, staging_table_ref):
-    client.delete_table(staging_table_ref, not_found_ok=True)
-
-
-def _merge_sql(table_ref, staging_table_ref):
-    update_columns = [name for name, _ in TABLE_SCHEMA_FIELDS if name not in _MERGE_KEY_COLUMNS]
-    insert_columns = [name for name, _ in TABLE_SCHEMA_FIELDS]
-
-    on_clause = " AND ".join(f"target.{col} = staging.{col}" for col in _MERGE_KEY_COLUMNS)
-    update_clause = ", ".join(f"{col} = staging.{col}" for col in update_columns)
-    insert_cols_clause = ", ".join(insert_columns)
-    insert_values_clause = ", ".join(f"staging.{col}" for col in insert_columns)
-
-    return f"""
-        MERGE `{table_ref}` AS target
-        USING `{staging_table_ref}` AS staging
-        ON {on_clause}
-        WHEN MATCHED AND staging.marca_temporal_carga > target.marca_temporal_carga THEN
-            UPDATE SET {update_clause}
-        WHEN NOT MATCHED THEN
-            INSERT ({insert_cols_clause})
-            VALUES ({insert_values_clause})
+def _filtrar_asentado(raw_rows, ahora):
     """
-
-
-def _merge_rows(client, table_ref, bigquery, rows):
-    staging_table_ref = _load_staging_table(client, table_ref, bigquery, rows)
-    try:
-        job_config = bigquery.QueryJobConfig(maximum_bytes_billed=MAX_BYTES_BILLED)
-        query_job = client.query(_merge_sql(table_ref, staging_table_ref), job_config=job_config)
-        query_job.result()
-    finally:
-        _drop_staging_table(client, staging_table_ref)
+    Se queda con las lecturas crudas del INA cuyo `timestart` tiene mas
+    de ASENTAMIENTO_HORAS de antiguedad respecto a `ahora`. Filtra a
+    nivel de lectura individual, pero como las 5 lecturas de una misma
+    fecha+hora comparten `timestart`, un grupo pasa completo o se
+    descarta completo - nunca queda a medias para
+    `assign_ina_miembros`.
+    """
+    corte = ahora - timedelta(hours=ASENTAMIENTO_HORAS)
+    return [row for row in raw_rows if datetime.fromisoformat(row["timestart"]) <= corte]
 
 
 class Command(BaseCommand):
-    help = "Sube el cache local de Mareas a BigQuery (mareas_raw.lecturas, MERGE incremental)."
+    help = (
+        "Sube Mareas a BigQuery: mareas_raw.lecturas y "
+        "mareas_raw.altura_marea_por_miembro. Append-only incremental, "
+        "sin DML: carga solo lo que todavia no existe."
+    )
 
     def add_arguments(self, parser):
         parser.add_argument("--station", dest="station_key")
 
     def handle(self, *args, **options):
         try:
-            client, table_ref, bigquery = _get_client_and_config()
+            client, project_id, dataset, bigquery = _get_client_and_config()
         except KeyError as exc:
             raise CommandError(f"Falta la variable de entorno {exc}.") from exc
 
-        _ensure_table(client, table_ref, bigquery)
+        table_ref = f"{project_id}.{dataset}.{TABLE_NAME}"
+        table_ref_altura_miembro = f"{project_id}.{dataset}.{TABLE_NAME_ALTURA_MIEMBRO}"
+
+        _ensure_table(client, table_ref, bigquery, TABLE_SCHEMA_FIELDS)
+        _ensure_table(client, table_ref_altura_miembro, bigquery, TABLE_SCHEMA_FIELDS_ALTURA_MIEMBRO)
 
         stations = load_station_catalog()
         station_key = options["station_key"]
@@ -144,38 +202,89 @@ class Command(BaseCommand):
         if not selected:
             raise CommandError(f"Estacion desconocida: {station_key}")
 
+        ahora = datetime.now()
         loaded_at_iso = datetime.now(timezone.utc).isoformat()
         total_rows = 0
         errors = []
 
         for station in selected:
             key = station["key"]
+
+            start_date = ahora.date() - timedelta(days=HISTORIA_DIAS_ATRAS)
+            end_date = ahora.date() + timedelta(days=1)
             try:
-                records, _updated_at, _cache_path = load_station_cache(key)
-            except FileNotFoundError:
-                self.stderr.write(f"{key}: sin cache local, se omite.")
-                logger.warning("Sin cache local para la estacion %s, se omite.", key)
-                continue
-
-            rows, fuentes_sin_datos = flatten_station_records(key, records, loaded_at_iso)
-            for fuente in sorted(fuentes_sin_datos):
-                self.stderr.write(f"{key}: sin datos de {fuente}, se omiten esas filas.")
-                logger.warning("Estacion %s sin datos de la fuente %s.", key, fuente)
-
-            if not rows:
-                continue
-
-            try:
-                _merge_rows(client, table_ref, bigquery, rows)
-            except Exception as exc:
-                logger.exception("Error subiendo filas de %s a BigQuery", key)
+                data, corid = fetch_ina_raw_rows(station, start_date, end_date)
+            except RuntimeError as exc:
+                logger.exception("Error consultando al INA para %s", key)
                 errors.append({"key": key, "error": str(exc)})
                 continue
 
-            total_rows += len(rows)
-            self.stdout.write(f"{key}: {len(rows)} filas actualizadas/insertadas en {table_ref}.")
+            asentados = _filtrar_asentado(data, ahora)
 
-        self.stdout.write(f"Total: {total_rows} filas procesadas.")
+            grouped = group_ina_rows(asentados, start_date)
+            ina_rows, ina_tiene_datos = flatten_ina_lecturas_rows(key, grouped, loaded_at_iso)
+            if not ina_tiene_datos:
+                self.stderr.write(f"{key}: sin datos asentados de ina, se omiten esas filas en {TABLE_NAME}.")
+                logger.warning("Estacion %s sin datos ina asentados.", key)
+                ina_rows = []
+
+            try:
+                cache_records, _updated_at, _cache_path = load_station_cache(key)
+            except FileNotFoundError:
+                self.stderr.write(f"{key}: sin cache local, se omiten filas smn en {TABLE_NAME}.")
+                logger.warning("Sin cache local para la estacion %s.", key)
+                smn_rows = []
+            else:
+                smn_rows, smn_tiene_datos = flatten_smn_lecturas_rows(key, cache_records, loaded_at_iso)
+                if not smn_tiene_datos:
+                    self.stderr.write(f"{key}: sin datos de smn, se omiten esas filas en {TABLE_NAME}.")
+                    logger.warning("Estacion %s sin datos de smn.", key)
+                    smn_rows = []
+
+            lecturas_rows = ina_rows + smn_rows
+            if lecturas_rows:
+                try:
+                    agregadas = _append_missing_rows(
+                        client, bigquery, table_ref, lecturas_rows, TABLE_SCHEMA_FIELDS, _CLAVE_LECTURAS, key
+                    )
+                except Exception as exc:
+                    logger.exception("Error subiendo filas de %s a %s", key, TABLE_NAME)
+                    errors.append({"key": key, "error": str(exc)})
+                else:
+                    total_rows += agregadas
+                    self.stdout.write(
+                        f"{key}: {agregadas} filas nuevas en {table_ref} (de {len(lecturas_rows)} candidatas)."
+                    )
+
+            try:
+                miembro_rows = flatten_ina_raw_rows(key, asentados, corid, loaded_at_iso)
+            except ValueError as exc:
+                logger.exception("Error separando lecturas crudas asentadas del INA para %s", key)
+                errors.append({"key": key, "error": str(exc)})
+                continue
+
+            if miembro_rows:
+                try:
+                    agregadas = _append_missing_rows(
+                        client,
+                        bigquery,
+                        table_ref_altura_miembro,
+                        miembro_rows,
+                        TABLE_SCHEMA_FIELDS_ALTURA_MIEMBRO,
+                        _CLAVE_ALTURA_MIEMBRO,
+                        key,
+                    )
+                except Exception as exc:
+                    logger.exception("Error subiendo filas de %s a %s", key, TABLE_NAME_ALTURA_MIEMBRO)
+                    errors.append({"key": key, "error": str(exc)})
+                else:
+                    total_rows += agregadas
+                    self.stdout.write(
+                        f"{key}: {agregadas} filas nuevas en {table_ref_altura_miembro} "
+                        f"(de {len(miembro_rows)} candidatas)."
+                    )
+
+        self.stdout.write(f"Total: {total_rows} filas nuevas cargadas.")
 
         if errors:
             for error in errors:

@@ -221,7 +221,7 @@ def fetch_ina_raw_rows(station, start_date, end_date):
     entrega la API (prono_id, timestart, timeend, valor - 5 filas por
     fecha+hora) y `corid` es el id de corrida (responseHeader.corid).
     Usado tanto por refresh_station_data (que agrega con
-    _group_ina_rows) como por la carga de crudo a BigQuery, que no
+    group_ina_rows) como por la carga de crudo a BigQuery, que no
     agrega nada.
     """
     url = _build_ina_url(station, start_date, end_date)
@@ -257,7 +257,7 @@ def _load_previous_weather(station_key):
     return previous
 
 
-def _group_ina_rows(rows, start_date):
+def group_ina_rows(rows, start_date):
     grouped = {}
     for item in rows:
         timestamp = datetime.fromisoformat(item["timestart"])
@@ -348,7 +348,7 @@ def refresh_station_data(station, forecast_result, now=None):
 
     data, _corid = fetch_ina_raw_rows(station, start_date, end_date)
 
-    grouped = _group_ina_rows(data, start_date)
+    grouped = group_ina_rows(data, start_date)
     merged = _merge_weather(station["key"], station, grouped, forecast_result)
     filtered = _filter_window(merged, start_date)
 
