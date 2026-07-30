@@ -24,3 +24,5 @@ dbt_mareas/logs/
 # Cache runtime de marea/clima por estación: se regenera en cada corrida,
 # no tiene sentido versionarlo (genera diff en cada ejecución local)
 mareas/services/data/cache/*.json
+
+docs/decisiones_carga_incremental_bigquery.md

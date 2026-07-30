@@ -2,6 +2,8 @@
 
 A Django app that displays live tide height and weather data for Argentine river stations, sourced from two official APIs (INA and SMN), with a BigQuery + dbt + Airflow layer behind it for historical analysis.
 
+I check tide levels here myself.
+
 **No database. No configuration. Clone and run.**
 
 ---
@@ -11,7 +13,7 @@ A Django app that displays live tide height and weather data for Argentine river
 - Current tide height, trend (rising / falling / stable), and next high/low tide
 - Weather: temperature, wind speed & direction, rainfall
 - SVG tide chart, hand-built in vanilla JS
-- 3 stations: San Fernando, Rosario, Zárate (up to 4 days of forecast)
+- 3 stations: San Fernando, Rosario, Zárate - the ones with the most people living along the river, San Fernando especially (up to 4 days of forecast)
 - Visual theme shifts with time of day (dawn / day / sunset / night)
 
 ---
