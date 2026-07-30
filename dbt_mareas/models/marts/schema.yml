@@ -5,7 +5,14 @@ models:
     description: >
       Mart historico que combina marea (INA) y clima (SMN) por fecha y
       hora, para San Fernando (la unica estacion cargada a BigQuery -
-      ver dbt_mareas/models/staging/sources.yml).
+      ver dbt_mareas/models/staging/sources.yml). La marea solo cubre
+      fecha+hora con mas de 48h de antiguedad (margen de asentamiento
+      del INA); el clima no espera ese margen y llega hasta hoy/dias
+      siguientes - las ultimas 48h van a tener clima sin marea por
+      diseño (ver docs/decisiones_carga_incremental_bigquery.md). La
+      altura de marea sale de un coalesce entre dos fuentes (ver el
+      comentario en el modelo) que desde la migracion a carga
+      append-only se pueblan en lockstep del mismo fetch al INA.
     columns:
       - name: estacion
         description: Id de la estacion, del catalogo real en estaciones.json.
@@ -17,3 +24,19 @@ models:
       - name: fecha
         tests:
           - not_null
+      - name: altura_minima
+        description: >
+          Minimo de las 5 lecturas crudas del INA por hora (ver
+          mareas_raw.altura_marea_por_miembro). Desde la migracion a
+          carga append-only (ver docs/decisiones_carga_incremental_
+          bigquery.md), mareas_raw.lecturas y mareas_raw.altura_marea_
+          por_miembro se pueblan del mismo fetch al INA en cada corrida,
+          asi que en la practica esto deberia estar poblado siempre.
+          Puede quedar NULL solo si la carga de altura_marea_por_miembro
+          fallo en una corrida puntual mientras la de lecturas si
+          funciono (ver mareas_por_estacion.sql).
+      - name: altura_maxima
+        description: >
+          Igual que altura_minima, pero el maximo de las 5 lecturas.
+          Mismo motivo de NULL (poco frecuente, solo ante un fallo
+          puntual de una de las dos cargas).

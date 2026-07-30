@@ -4,6 +4,17 @@ from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.test import SimpleTestCase
 
+# Import explicito del modulo del comando antes de que mock.patch
+# necesite resolver su dotted path por primera vez: sin esto,
+# mock.patch(f"{COMMAND_MODULE}.X", ...) puede resolver el submodulo
+# por un camino distinto al que usa call_command() internamente
+# (import_module vs getattr encadenado sobre el paquete padre),
+# parcheando un objeto de modulo que no es el que termina ejecutandose
+# - se manifiesta como un test que falla segun que otros tests
+# corrieron antes en el mismo proceso. Mismo problema de fondo que en
+# test_bigquery_export.py.
+from mareas.management.commands import mareas_actualizar_datos  # noqa: F401
+
 COMMAND_MODULE = "mareas.management.commands.mareas_actualizar_datos"
 
 

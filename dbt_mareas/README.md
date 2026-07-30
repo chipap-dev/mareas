@@ -79,12 +79,16 @@ tests/
 └── assert_staging_sin_duplicados.sql            # confirma que el dedup de staging no dejo duplicados
 ```
 
-`mareas_cargar_bigquery` hace `MERGE` (no append ciego) por
-`estacion+fecha+hora+fuente_origen`, asi que el raw no deberia acumular
-duplicados en uso normal - la ventana de pronostico local se solapa dia
-a dia, y un append ciego los duplicaria sin limite. El `qualify
-row_number()` en los staging models es una red de seguridad adicional
-para lo mismo (por ejemplo, filas cargadas antes de este MERGE).
+`mareas_cargar_bigquery` carga append-only (sin MERGE, sin DML - el
+sandbox de BigQuery no lo permite, ver docs/decisiones_carga_
+incremental_bigquery.md): antes de cargar consulta que
+`estacion+fecha+hora+fuente_origen` ya existe, y solo agrega lo que
+falta con `WRITE_APPEND`, asi que el raw no deberia acumular duplicados
+en uso normal. El lado INA ademas solo carga fecha+hora con mas de 48h
+de antiguedad (margen de asentamiento). El `qualify row_number()` en
+los staging models es la unica red de seguridad restante contra un
+duplicado: sin MERGE no hay ninguna restriccion de unicidad a nivel de
+base de datos.
 
 `dbt source freshness` mide cuando se **cargo** cada fila
 (`marca_temporal_carga`), no cuando INA genero el pronostico - el loader

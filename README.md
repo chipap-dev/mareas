@@ -24,7 +24,7 @@ INA API + SMN feed → local JSON cache → Django app (live)
 ```
 
 - The live dashboard reads a local per-station JSON cache: zero added latency, no dependency on the warehouse
-- A separate loader does an incremental `MERGE` into BigQuery, building a real time series instead of a rolling snapshot
+- A separate loader appends incrementally into BigQuery (no DML - the BigQuery sandbox doesn't allow it; checks what's already loaded and only adds what's missing), building a real time series instead of a rolling snapshot
 - dbt builds two staging models (INA, SMN) and one mart, `mareas_por_estacion`, joining tide and weather by station/date/hour
 - Tests cover freshness, duplicates, and forecast staleness
 - Airflow runs the pipeline daily: refresh → load → `dbt run` → `dbt test`
